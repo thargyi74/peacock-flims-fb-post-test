@@ -41,6 +41,7 @@ export function useFacebookData() {
       }
 
       const response = await fetch(`/api/facebook/posts?${params}`);
+      
       if (!response.ok) {
         throw new Error('Failed to fetch posts');
       }
@@ -67,7 +68,7 @@ export function useFacebookData() {
       setError(null);
     } catch (err) {
       console.error('Error fetching posts:', err);
-      setError('Failed to load posts. Please check your Facebook API configuration.');
+      setError('Failed to load posts from Facebook Graph API. Please check your configuration.');
     } finally {
       setLoading(false);
       setLoadingMore(false);

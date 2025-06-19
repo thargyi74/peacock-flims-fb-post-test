@@ -8,7 +8,7 @@ class FacebookService {
   private pageId: string;
 
   constructor() {
-    this.accessToken = process.env.FACEBOOK_ACCESS_TOKEN || '';
+    this.accessToken = process.env.FACEBOOK_ACCESS_TOKEN || process.env.FACEBOOK_USER_TOKEN || '';
     this.pageId = process.env.FACEBOOK_PAGE_ID || '';
   }
 
