@@ -19,6 +19,10 @@ const nextConfig: NextConfig = {
         protocol: 'https',
         hostname: 'scontent.fbkk10-1.fna.fbcdn.net',
       },
+      {
+        protocol: 'https',
+        hostname: 'scontent.fcnx3-1.fna.fbcdn.net',
+      },
       // More general Facebook CDN patterns
       {
         protocol: 'https',
@@ -63,6 +67,10 @@ const nextConfig: NextConfig = {
       {
         protocol: 'https',
         hostname: 'picsum.photos',
+      },
+      {
+        protocol: 'https',
+        hostname: 'images.unsplash.com',
       },
     ],
   },

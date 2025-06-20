@@ -33,24 +33,44 @@ export default function PageHeader({ pageInfo, loading }: PageHeaderProps) {
   return (
     <div className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden mb-6">
       {/* Cover Photo */}
-      {pageInfo.cover?.source && !coverError && (
-        <div className="relative h-32 sm:h-48 bg-gradient-to-r from-blue-400 to-purple-500">
-          <Image
-            src={pageInfo.cover.source}
-            alt={`${pageInfo.name} cover photo`}
-            fill
-            className="object-cover"
-            sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
-            onError={() => setCoverError(true)}
-          />
-          <div className="absolute inset-0 bg-black bg-opacity-20" />
-        </div>
-      )}
+      <div className="relative h-32 sm:h-48">
+        {pageInfo.cover?.source && !coverError ? (
+          <>
+            <Image
+              src={pageInfo.cover.source}
+              alt={`${pageInfo.name} cover photo`}
+              fill
+              className="object-cover"
+              sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
+              onError={() => {
+                console.log('Cover photo failed to load:', pageInfo.cover?.source);
+                setCoverError(true);
+              }}
+              onLoad={() => {
+                console.log('Cover photo loaded successfully:', pageInfo.cover?.source);
+              }}
+            />
+            <div className="absolute inset-0 bg-black bg-opacity-20" />
+          </>
+        ) : (
+          // Fallback - try local cover photo first, then gradient
+          <>
+            <Image
+              src="/fb_cover.jpg"
+              alt={`${pageInfo.name} cover photo`}
+              fill
+              className="object-cover"
+              sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
+              onError={() => {
+                // If local fallback also fails, show gradient
+              }}
+            />
+            <div className="absolute inset-0 bg-black bg-opacity-30" />
+          </>
+        )}
+      </div>
 
-      <div className={cn(
-        "p-6",
-        pageInfo.cover?.source && !coverError ? "-mt-12 relative z-10" : ""
-      )}>
+      <div className="p-6 -mt-12 relative z-10">
         <div className="flex flex-col sm:flex-row items-start sm:items-center gap-4">
           {/* Profile Picture */}
           <div className="relative">

@@ -47,7 +47,7 @@ export interface FacebookPost {
       total_count: number;
     };
   };
-  likes?: {
+  reactions_count?: {
     summary: {
       total_count: number;
     };

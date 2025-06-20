@@ -85,7 +85,7 @@ class FacebookService {
               // Optimize attachments - only get essential image data
               'attachments{type,media_type,media{image{src,width,height}},target{url},title,description,subattachments.limit(3){type,media{image{src,width,height}},target{url}}}',
               // Use aliases for engagement metrics
-              'reactions.summary(total_count).as(likes)',
+              'reactions.summary(total_count).as(reactions_count)',
               'comments.summary(total_count).as(comments_count)', 
               'shares'
             ].join(','),
@@ -146,7 +146,7 @@ class FacebookService {
         try {
           const url = this.buildUrl(`/${postId}`, {
             // Use aliases for optimized engagement data
-            fields: 'reactions.summary(total_count).as(likes),comments.summary(total_count).as(comments_count),shares'
+            fields: 'reactions.summary(total_count).as(reactions_count),comments.summary(total_count).as(comments_count),shares'
           });
 
           const response = await axios.get(url);

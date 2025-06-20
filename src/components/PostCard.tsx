@@ -24,7 +24,7 @@ export default function PostCard({ post, priority = false }: PostCardProps) {
     switch (type) {
       case 'reactions':
         // Try aliased field first, fallback to original
-        return post.likes?.summary?.total_count || post.reactions?.summary?.total_count || 0;
+        return post.reactions_count?.summary?.total_count || post.reactions?.summary?.total_count || 0;
       case 'comments':
         // Try aliased field first, fallback to original
         return post.comments_count?.summary?.total_count || post.comments?.summary?.total_count || 0;
@@ -45,18 +45,36 @@ export default function PostCard({ post, priority = false }: PostCardProps) {
     setImageErrors(prev => ({ ...prev, [imageKey]: true }));
   };
 
+  // Helper function to extract base URL for duplicate detection
+  const getImageBaseUrl = (url: string): string => {
+    try {
+      // Remove Facebook's URL parameters but keep the core image identifier
+      const urlObj = new URL(url);
+      const pathParts = urlObj.pathname.split('/');
+      // Get the image ID part (usually contains numbers and letters)
+      const imageId = pathParts.find(part => /^\d+_\d+_\d+/.test(part));
+      return imageId || urlObj.pathname;
+    } catch {
+      return url;
+    }
+  };
+
   // Extract all images from the post
   const getAllImages = () => {
-    const images: Array<{ src: string; width?: number; height?: number; key: string }> = [];
+    const images: Array<{ src: string; width?: number; height?: number; key: string; quality: number }> = [];
     
-    // Prioritize optimized main_picture, fallback to full_picture
+    // Collect all potential images with quality scoring
+    const allPotentialImages: Array<{ src: string; width?: number; height?: number; key: string; quality: number }> = [];
+
+    // Add main picture/full picture
     const mainImage = post.main_picture || post.full_picture;
     if (mainImage) {
-      images.push({
+      allPotentialImages.push({
         src: mainImage,
         width: 800, // We know this is 800px from our API request
         height: 800,
-        key: post.main_picture ? 'main_picture' : 'full_picture'
+        key: post.main_picture ? 'main_picture' : 'full_picture',
+        quality: 100 // Highest priority for main picture
       });
     }
 
@@ -65,45 +83,50 @@ export default function PostCard({ post, priority = false }: PostCardProps) {
       post.attachments.data.forEach((attachment, attachmentIndex) => {
         // Main attachment image
         if (attachment.media?.image?.src) {
-          // Skip if this image is the same as our main picture
-          const imageUrl = attachment.media.image.src;
-          const isDuplicate = mainImage && (imageUrl === mainImage);
-          
-          if (!isDuplicate) {
-            images.push({
-              src: imageUrl,
-              width: attachment.media.image.width,
-              height: attachment.media.image.height,
-              key: `attachment_${attachmentIndex}`
-            });
-          }
+          const imageSize = (attachment.media.image.width || 0) * (attachment.media.image.height || 0);
+          allPotentialImages.push({
+            src: attachment.media.image.src,
+            width: attachment.media.image.width,
+            height: attachment.media.image.height,
+            key: `attachment_${attachmentIndex}`,
+            quality: 80 + (imageSize / 10000) // Higher quality for larger images
+          });
         }
 
-        // Subattachment images (for multiple photo posts) - limited to 3 by API
+        // Subattachment images (for multiple photo posts)
         if (attachment.subattachments?.data) {
           attachment.subattachments.data.forEach((subattachment, subIndex) => {
             if (subattachment.media?.image?.src) {
-              const imageUrl = subattachment.media.image.src;
-              const isDuplicate = mainImage && (imageUrl === mainImage);
-              
-              if (!isDuplicate) {
-                images.push({
-                  src: imageUrl,
-                  width: subattachment.media.image.width,
-                  height: subattachment.media.image.height,
-                  key: `subattachment_${attachmentIndex}_${subIndex}`
-                });
-              }
+              const imageSize = (subattachment.media.image.width || 0) * (subattachment.media.image.height || 0);
+              allPotentialImages.push({
+                src: subattachment.media.image.src,
+                width: subattachment.media.image.width,
+                height: subattachment.media.image.height,
+                key: `subattachment_${attachmentIndex}_${subIndex}`,
+                quality: 60 + (imageSize / 10000) // Lower base quality for subattachments
+              });
             }
           });
         }
       });
     }
 
-    // Remove duplicates based on src (additional safety)
-    const uniqueImages = images.filter((image, index, self) => 
-      index === self.findIndex(img => img.src === image.src)
-    );
+    // Group by base URL and keep only the highest quality version of each unique image
+    const imageGroups = new Map<string, typeof allPotentialImages[0]>();
+    
+    allPotentialImages.forEach(image => {
+      const baseUrl = getImageBaseUrl(image.src);
+      const existing = imageGroups.get(baseUrl);
+      
+      if (!existing || image.quality > existing.quality) {
+        imageGroups.set(baseUrl, image);
+      }
+    });
+
+    // Convert back to array and sort by quality (highest first)
+    const uniqueImages = Array.from(imageGroups.values())
+      .sort((a, b) => b.quality - a.quality)
+      .map(({ quality, ...image }) => image); // Remove quality field from final result
 
     return uniqueImages;
   };
@@ -112,22 +135,31 @@ export default function PostCard({ post, priority = false }: PostCardProps) {
     if (images.length === 0) return null;
 
     if (images.length === 1) {
-      // Single image - full width
+      // Single image - responsive height based on image aspect ratio
       const image = images[0];
+      const aspectRatio = image.width && image.height ? image.width / image.height : 16/9;
+      
       return (
-        <div className="relative w-full h-64 mb-4">
+        <div className="mb-4">
           {!imageErrors[image.key] ? (
-            <Image
-              src={image.src}
-              alt="Post image"
-              fill
-              className="object-cover rounded-md"
-              sizes="(max-width: 768px) calc(100vw - 32px), 640px"
-              priority={priority}
-              onError={() => handleImageError(image.key)}
-            />
+            <div className="relative w-full bg-gray-100 rounded-lg overflow-hidden shadow-sm">
+              <Image
+                src={image.src}
+                alt="Post image"
+                width={image.width || 800}
+                height={image.height || 450}
+                className="w-full h-auto object-contain"
+                sizes="(max-width: 768px) calc(100vw - 32px), 640px"
+                priority={priority}
+                onError={() => handleImageError(image.key)}
+                style={{
+                  maxHeight: '500px', // Prevent extremely tall images
+                  minHeight: '200px'  // Ensure minimum visibility
+                }}
+              />
+            </div>
           ) : (
-            <div className="w-full h-full bg-gray-200 rounded-md flex items-center justify-center">
+            <div className="w-full h-64 bg-gray-200 rounded-lg flex items-center justify-center">
               <div className="text-center text-gray-500">
                 <ImageIcon size={24} className="mx-auto mb-2" />
                 <span className="text-sm">Image unavailable</span>
@@ -250,6 +282,19 @@ export default function PostCard({ post, priority = false }: PostCardProps) {
   const allImages = getAllImages();
   const totalEngagement = getTotalEngagement();
   const isHighEngagement = totalEngagement > 50;
+
+  // Debug logging for development
+  if (process.env.NODE_ENV === 'development' && allImages.length > 1) {
+    console.log('Post with multiple images detected:', {
+      postId: post.id,
+      imageCount: allImages.length,
+      images: allImages.map(img => ({
+        key: img.key,
+        src: img.src.substring(0, 100) + '...',
+        dimensions: `${img.width}x${img.height}`
+      }))
+    });
+  }
 
   return (
     <article className={cn(
