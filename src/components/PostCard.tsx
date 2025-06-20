@@ -2,16 +2,19 @@
 
 import { FacebookPost } from '@/types/facebook';
 import { formatDistanceToNow } from 'date-fns';
-import { Heart, MessageCircle, Share, ExternalLink, ImageIcon } from 'lucide-react';
+import { Heart, MessageCircle, Share, ExternalLink, ImageIcon, Calendar, TrendingUp } from 'lucide-react';
 import Image from 'next/image';
 import { useState } from 'react';
+import { cn } from '@/lib/utils';
 
 interface PostCardProps {
   post: FacebookPost;
+  priority?: boolean;
 }
 
-export default function PostCard({ post }: PostCardProps) {
+export default function PostCard({ post, priority = false }: PostCardProps) {
   const [imageErrors, setImageErrors] = useState<{ [key: string]: boolean }>({});
+  const [isExpanded, setIsExpanded] = useState(false);
 
   const formatDate = (dateString: string) => {
     return formatDistanceToNow(new Date(dateString), { addSuffix: true });
@@ -20,15 +23,23 @@ export default function PostCard({ post }: PostCardProps) {
   const getEngagementCount = (type: 'reactions' | 'comments' | 'shares') => {
     switch (type) {
       case 'reactions':
-        return post.reactions?.summary?.total_count || 0;
+        // Try aliased field first, fallback to original
+        return post.likes?.summary?.total_count || post.reactions?.summary?.total_count || 0;
       case 'comments':
-        return post.comments?.summary?.total_count || 0;
+        // Try aliased field first, fallback to original
+        return post.comments_count?.summary?.total_count || post.comments?.summary?.total_count || 0;
       case 'shares':
         return post.shares?.count || 0;
       default:
         return 0;
     }
   };
+
+  const getTotalEngagement = () => {
+    return getEngagementCount('reactions') + getEngagementCount('comments') + getEngagementCount('shares');
+  };
+
+  const shouldTruncateText = (text: string) => text.length > 300;
 
   const handleImageError = (imageKey: string) => {
     setImageErrors(prev => ({ ...prev, [imageKey]: true }));
@@ -38,11 +49,14 @@ export default function PostCard({ post }: PostCardProps) {
   const getAllImages = () => {
     const images: Array<{ src: string; width?: number; height?: number; key: string }> = [];
     
-    // Add full_picture if available
-    if (post.full_picture) {
+    // Prioritize optimized main_picture, fallback to full_picture
+    const mainImage = post.main_picture || post.full_picture;
+    if (mainImage) {
       images.push({
-        src: post.full_picture,
-        key: 'full_picture'
+        src: mainImage,
+        width: 800, // We know this is 800px from our API request
+        height: 800,
+        key: post.main_picture ? 'main_picture' : 'full_picture'
       });
     }
 
@@ -51,31 +65,42 @@ export default function PostCard({ post }: PostCardProps) {
       post.attachments.data.forEach((attachment, attachmentIndex) => {
         // Main attachment image
         if (attachment.media?.image?.src) {
-          images.push({
-            src: attachment.media.image.src,
-            width: attachment.media.image.width,
-            height: attachment.media.image.height,
-            key: `attachment_${attachmentIndex}`
-          });
+          // Skip if this image is the same as our main picture
+          const imageUrl = attachment.media.image.src;
+          const isDuplicate = mainImage && (imageUrl === mainImage);
+          
+          if (!isDuplicate) {
+            images.push({
+              src: imageUrl,
+              width: attachment.media.image.width,
+              height: attachment.media.image.height,
+              key: `attachment_${attachmentIndex}`
+            });
+          }
         }
 
-        // Subattachment images (for multiple photo posts)
+        // Subattachment images (for multiple photo posts) - limited to 3 by API
         if (attachment.subattachments?.data) {
           attachment.subattachments.data.forEach((subattachment, subIndex) => {
             if (subattachment.media?.image?.src) {
-              images.push({
-                src: subattachment.media.image.src,
-                width: subattachment.media.image.width,
-                height: subattachment.media.image.height,
-                key: `subattachment_${attachmentIndex}_${subIndex}`
-              });
+              const imageUrl = subattachment.media.image.src;
+              const isDuplicate = mainImage && (imageUrl === mainImage);
+              
+              if (!isDuplicate) {
+                images.push({
+                  src: imageUrl,
+                  width: subattachment.media.image.width,
+                  height: subattachment.media.image.height,
+                  key: `subattachment_${attachmentIndex}_${subIndex}`
+                });
+              }
             }
           });
         }
       });
     }
 
-    // Remove duplicates based on src
+    // Remove duplicates based on src (additional safety)
     const uniqueImages = images.filter((image, index, self) => 
       index === self.findIndex(img => img.src === image.src)
     );
@@ -97,7 +122,8 @@ export default function PostCard({ post }: PostCardProps) {
               alt="Post image"
               fill
               className="object-cover rounded-md"
-              sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
+              sizes="(max-width: 768px) calc(100vw - 32px), 640px"
+              priority={priority}
               onError={() => handleImageError(image.key)}
             />
           ) : (
@@ -124,7 +150,8 @@ export default function PostCard({ post }: PostCardProps) {
                   alt="Post image"
                   fill
                   className="object-cover rounded-md"
-                  sizes="(max-width: 768px) 50vw, (max-width: 1200px) 25vw, 16vw"
+                  sizes="(max-width: 768px) calc(50vw - 20px), 316px"
+                  priority={priority}
                   onError={() => handleImageError(image.key)}
                 />
               ) : (
@@ -149,7 +176,8 @@ export default function PostCard({ post }: PostCardProps) {
                 alt="Post image"
                 fill
                 className="object-cover rounded-md"
-                sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
+                sizes="(max-width: 768px) calc(100vw - 32px), 640px"
+                priority={priority}
                 onError={() => handleImageError(images[0].key)}
               />
             ) : (
@@ -167,7 +195,8 @@ export default function PostCard({ post }: PostCardProps) {
                     alt="Post image"
                     fill
                     className="object-cover rounded-md"
-                    sizes="(max-width: 768px) 50vw, (max-width: 1200px) 25vw, 16vw"
+                    sizes="(max-width: 768px) calc(50vw - 20px), 316px"
+                    priority={priority}
                     onError={() => handleImageError(image.key)}
                   />
                 ) : (
@@ -196,7 +225,8 @@ export default function PostCard({ post }: PostCardProps) {
                 alt="Post image"
                 fill
                 className="object-cover rounded-md"
-                sizes="(max-width: 768px) 50vw, (max-width: 1200px) 25vw, 16vw"
+                sizes="(max-width: 768px) calc(50vw - 20px), 316px"
+                priority={priority}
                 onError={() => handleImageError(image.key)}
               />
             ) : (
@@ -218,37 +248,80 @@ export default function PostCard({ post }: PostCardProps) {
   };
 
   const allImages = getAllImages();
+  const totalEngagement = getTotalEngagement();
+  const isHighEngagement = totalEngagement > 50;
 
   return (
-    <div className="bg-white rounded-lg shadow-md border border-gray-200 p-6 mb-6">
+    <article className={cn(
+      "bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden transition-all duration-300 hover:shadow-md hover:border-gray-300",
+      isHighEngagement && "ring-2 ring-blue-100 border-blue-200"
+    )}>
       {/* Post Header */}
-      <div className="flex items-center justify-between mb-4">
-        <div className="text-sm text-gray-500">
-          {formatDate(post.created_time)}
+      <div className="p-6 pb-4">
+        <div className="flex items-center justify-between mb-4">
+          <div className="flex items-center gap-2 text-sm text-gray-500">
+            <Calendar className="w-4 h-4" />
+            <time dateTime={post.created_time}>
+              {formatDate(post.created_time)}
+            </time>
+            {isHighEngagement && (
+              <div className="flex items-center gap-1 text-blue-600 bg-blue-50 px-2 py-1 rounded-full text-xs font-medium">
+                <TrendingUp className="w-3 h-3" />
+                Popular
+              </div>
+            )}
+          </div>
+          <a
+            href={post.permalink_url}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="text-gray-400 hover:text-blue-600 transition-colors duration-200 p-1 rounded-full hover:bg-blue-50"
+            aria-label="View post on Facebook"
+          >
+            <ExternalLink size={16} />
+          </a>
         </div>
-        <a
-          href={post.permalink_url}
-          target="_blank"
-          rel="noopener noreferrer"
-          className="text-blue-600 hover:text-blue-800 transition-colors"
-        >
-          <ExternalLink size={16} />
-        </a>
-      </div>
 
-      {/* Post Content */}
-      <div className="mb-4">
-        {post.message && (
-          <p className="text-gray-800 mb-4 whitespace-pre-wrap">
-            {post.message}
-          </p>
-        )}
-        
-        {post.story && (
-          <p className="text-gray-600 mb-4 italic">
-            {post.story}
-          </p>
-        )}
+        {/* Post Content */}
+        <div className="mb-4">
+          {post.message && (
+            <div className="prose prose-sm max-w-none">
+              {shouldTruncateText(post.message) && !isExpanded ? (
+                <div>
+                  <p className="text-gray-800 whitespace-pre-wrap mb-2">
+                    {post.message.substring(0, 300)}...
+                  </p>
+                  <button
+                    onClick={() => setIsExpanded(true)}
+                    className="text-blue-600 hover:text-blue-700 text-sm font-medium transition-colors"
+                  >
+                    Read more
+                  </button>
+                </div>
+              ) : (
+                <div>
+                  <p className="text-gray-800 whitespace-pre-wrap mb-2">
+                    {post.message}
+                  </p>
+                  {shouldTruncateText(post.message) && isExpanded && (
+                    <button
+                      onClick={() => setIsExpanded(false)}
+                      className="text-blue-600 hover:text-blue-700 text-sm font-medium transition-colors"
+                    >
+                      Show less
+                    </button>
+                  )}
+                </div>
+              )}
+            </div>
+          )}
+          
+          {post.story && (
+            <p className="text-gray-600 italic bg-gray-50 p-3 rounded-lg border-l-4 border-blue-200">
+              {post.story}
+            </p>
+          )}
+        </div>
 
         {/* Post Images */}
         {renderImageGrid(allImages)}
@@ -259,14 +332,14 @@ export default function PostCard({ post }: PostCardProps) {
             {post.attachments.data
               .filter(attachment => !attachment.media?.image && attachment.type !== 'photo')
               .map((attachment, index) => (
-                <div key={index} className="border rounded-md p-4 mb-2">
+                <div key={index} className="border border-gray-200 rounded-lg p-4 mb-2 bg-gray-50 hover:bg-gray-100 transition-colors">
                   {attachment.title && (
                     <h4 className="font-semibold text-gray-800 mb-2">
                       {attachment.title}
                     </h4>
                   )}
                   {attachment.description && (
-                    <p className="text-gray-600 text-sm mb-2">
+                    <p className="text-gray-600 text-sm mb-2 line-clamp-2">
                       {attachment.description}
                     </p>
                   )}
@@ -275,7 +348,7 @@ export default function PostCard({ post }: PostCardProps) {
                       href={attachment.target.url}
                       target="_blank"
                       rel="noopener noreferrer"
-                      className="text-blue-600 hover:text-blue-800 text-sm inline-flex items-center gap-1"
+                      className="text-blue-600 hover:text-blue-700 text-sm inline-flex items-center gap-1 font-medium transition-colors"
                     >
                       View Link <ExternalLink size={12} />
                     </a>
@@ -287,24 +360,70 @@ export default function PostCard({ post }: PostCardProps) {
       </div>
 
       {/* Engagement Stats */}
-      <div className="flex items-center justify-between pt-4 border-t border-gray-100">
-        <div className="flex items-center space-x-6 text-gray-600">
-          <div className="flex items-center space-x-1">
-            <Heart size={16} className="text-red-500" />
-            <span className="text-sm">{getEngagementCount('reactions')}</span>
+      <div className="bg-gray-50 px-6 py-4 border-t border-gray-100">
+        <div className="flex items-center justify-between">
+          <div className="flex items-center space-x-6">
+            <EngagementButton
+              icon={Heart}
+              count={getEngagementCount('reactions')}
+              color="text-red-500"
+              hoverColor="hover:text-red-600"
+              bgColor="hover:bg-red-50"
+              label="reactions"
+            />
+            
+            <EngagementButton
+              icon={MessageCircle}
+              count={getEngagementCount('comments')}
+              color="text-blue-500"
+              hoverColor="hover:text-blue-600"
+              bgColor="hover:bg-blue-50"
+              label="comments"
+            />
+            
+            <EngagementButton
+              icon={Share}
+              count={getEngagementCount('shares')}
+              color="text-green-500"
+              hoverColor="hover:text-green-600"
+              bgColor="hover:bg-green-50"
+              label="shares"
+            />
           </div>
           
-          <div className="flex items-center space-x-1">
-            <MessageCircle size={16} className="text-blue-500" />
-            <span className="text-sm">{getEngagementCount('comments')}</span>
-          </div>
-          
-          <div className="flex items-center space-x-1">
-            <Share size={16} className="text-green-500" />
-            <span className="text-sm">{getEngagementCount('shares')}</span>
-          </div>
+          {totalEngagement > 0 && (
+            <div className="text-xs text-gray-500 bg-white px-2 py-1 rounded-full border">
+              {totalEngagement} total engagement{totalEngagement !== 1 ? 's' : ''}
+            </div>
+          )}
         </div>
       </div>
-    </div>
+    </article>
+  );
+}
+
+interface EngagementButtonProps {
+  icon: React.ComponentType<{ size?: number; className?: string }>;
+  count: number;
+  color: string;
+  hoverColor: string;
+  bgColor: string;
+  label: string;
+}
+
+function EngagementButton({ icon: Icon, count, color, hoverColor, bgColor, label }: EngagementButtonProps) {
+  return (
+    <button 
+      className={cn(
+        "flex items-center space-x-2 px-3 py-2 rounded-lg transition-all duration-200 group",
+        bgColor
+      )}
+      aria-label={`${count} ${label}`}
+    >
+      <Icon size={16} className={cn(color, hoverColor, "transition-colors")} />
+      <span className={cn("text-sm font-medium", count > 0 ? "text-gray-700" : "text-gray-400")}>
+        {count > 999 ? `${(count / 1000).toFixed(1)}k` : count}
+      </span>
+    </button>
   );
 }

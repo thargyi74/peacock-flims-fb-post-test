@@ -1,5 +1,8 @@
 import { NextResponse } from 'next/server';
 
+// Cache for 1 hour - page info changes rarely
+export const revalidate = 3600;
+
 export async function GET() {
   try {
     const pageToken = process.env.FACEBOOK_ACCESS_TOKEN;
@@ -23,18 +26,31 @@ export async function GET() {
     const pageInfo = await response.json();
     
     if (pageInfo.error) {
-      return NextResponse.json(
+      const errorResponse = NextResponse.json(
         { error: 'Facebook API Error', details: pageInfo.error },
         { status: 400 }
       );
+      // Don't cache error responses
+      errorResponse.headers.set('Cache-Control', 'no-cache, no-store, must-revalidate');
+      return errorResponse;
     }
     
-    return NextResponse.json(pageInfo);
+    const successResponse = NextResponse.json(pageInfo);
+    
+    // Set cache headers for page info (longer cache since it changes rarely)
+    successResponse.headers.set('Cache-Control', 'public, s-maxage=3600, stale-while-revalidate=7200');
+    
+    return successResponse;
   } catch (error) {
     console.error('Page API Error:', error);
-    return NextResponse.json(
+    const errorResponse = NextResponse.json(
       { error: 'Failed to fetch page info from Facebook Graph API' },
       { status: 500 }
     );
+    
+    // Don't cache error responses
+    errorResponse.headers.set('Cache-Control', 'no-cache, no-store, must-revalidate');
+    
+    return errorResponse;
   }
 }

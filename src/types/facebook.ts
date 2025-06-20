@@ -4,6 +4,7 @@ export interface FacebookPost {
   story?: string;
   created_time: string;
   full_picture?: string;
+  main_picture?: string; // Alias for optimized picture
   permalink_url: string;
   attachments?: {
     data: Array<{
@@ -46,11 +47,21 @@ export interface FacebookPost {
       total_count: number;
     };
   };
+  likes?: {
+    summary: {
+      total_count: number;
+    };
+  }; // Alias for reactions
   comments?: {
     summary: {
       total_count: number;
     };
   };
+  comments_count?: {
+    summary: {
+      total_count: number;
+    };
+  }; // Alias for comments
   shares?: {
     count: number;
   };
@@ -76,4 +87,13 @@ export interface FacebookPageInfo {
     source: string;
   };
   fan_count?: number;
+}
+
+export interface FacebookInitialDataResponse {
+  pageInfo: FacebookPageInfo;
+  posts: FacebookPost[];
+  paging?: {
+    previous?: string;
+    next?: string;
+  };
 }

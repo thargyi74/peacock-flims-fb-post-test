@@ -1,6 +1,9 @@
 import { NextResponse } from 'next/server';
 import axios from 'axios';
 
+// Cache for 1 minute - test route for debugging, short cache to see real-time issues
+export const revalidate = 60;
+
 export async function GET() {
   try {
     const accessToken = process.env.FACEBOOK_ACCESS_TOKEN;

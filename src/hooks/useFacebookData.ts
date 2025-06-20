@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { FacebookPost, FacebookPostsResponse, FacebookPageInfo } from '@/types/facebook';
+import { FacebookPost, FacebookPostsResponse, FacebookPageInfo, FacebookInitialDataResponse } from '@/types/facebook';
 
 export function useFacebookData() {
   const [posts, setPosts] = useState<FacebookPost[]>([]);
@@ -12,33 +12,45 @@ export function useFacebookData() {
   const [nextCursor, setNextCursor] = useState<string | null>(null);
   const [hasMore, setHasMore] = useState(true);
 
-  const fetchPageInfo = async () => {
+  const fetchInitialData = async () => {
     try {
-      const response = await fetch('/api/facebook/page');
+      setLoading(true);
+      const response = await fetch('/api/facebook/initial-data');
       if (!response.ok) {
-        throw new Error('Failed to fetch page info');
+        throw new Error('Failed to fetch initial data');
       }
-      const data: FacebookPageInfo = await response.json();
-      setPageInfo(data);
+      const data: FacebookInitialDataResponse = await response.json();
+      
+      setPageInfo(data.pageInfo);
+      setPosts(data.posts);
+      
+      // Extract cursor from paging
+      if (data.paging?.next) {
+        const url = new URL(data.paging.next);
+        const afterParam = url.searchParams.get('after');
+        setNextCursor(afterParam);
+        setHasMore(true);
+      } else {
+        setNextCursor(null);
+        setHasMore(false);
+      }
+      
+      setError(null);
     } catch (err) {
-      console.error('Error fetching page info:', err);
-      setError('Failed to load page information');
+      console.error('Error fetching initial data:', err);
+      setError('Failed to load initial data from Facebook Graph API. Please check your configuration.');
+    } finally {
+      setLoading(false);
     }
   };
 
-  const fetchPosts = async (cursor?: string, append = false) => {
+  const fetchPosts = async (cursor: string) => {
     try {
-      if (!append) {
-        setLoading(true);
-      } else {
-        setLoadingMore(true);
-      }
+      setLoadingMore(true);
 
       const params = new URLSearchParams();
       params.append('limit', '10');
-      if (cursor) {
-        params.append('after', cursor);
-      }
+      params.append('after', cursor);
 
       const response = await fetch(`/api/facebook/posts?${params}`);
       
@@ -48,11 +60,7 @@ export function useFacebookData() {
 
       const data: FacebookPostsResponse = await response.json();
       
-      if (append) {
-        setPosts(prev => [...prev, ...data.data]);
-      } else {
-        setPosts(data.data);
-      }
+      setPosts(prev => [...prev, ...data.data]);
 
       // Extract cursor from paging
       if (data.paging?.next) {
@@ -67,17 +75,16 @@ export function useFacebookData() {
 
       setError(null);
     } catch (err) {
-      console.error('Error fetching posts:', err);
-      setError('Failed to load posts from Facebook Graph API. Please check your configuration.');
+      console.error('Error fetching more posts:', err);
+      setError('Failed to load more posts from Facebook Graph API.');
     } finally {
-      setLoading(false);
       setLoadingMore(false);
     }
   };
 
   const loadMore = () => {
     if (nextCursor && !loadingMore) {
-      fetchPosts(nextCursor, true);
+      fetchPosts(nextCursor);
     }
   };
 
@@ -85,13 +92,11 @@ export function useFacebookData() {
     setPosts([]);
     setNextCursor(null);
     setHasMore(true);
-    fetchPosts();
-    fetchPageInfo();
+    fetchInitialData();
   };
 
   useEffect(() => {
-    fetchPosts();
-    fetchPageInfo();
+    fetchInitialData();
   }, []);
 
   return {
