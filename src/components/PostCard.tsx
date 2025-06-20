@@ -132,12 +132,62 @@ export default function PostCard({ post, priority = false }: PostCardProps) {
   };
 
   const renderImageGrid = (images: Array<{ src: string; width?: number; height?: number; key: string }>) => {
-    if (images.length === 0) return null;
+    // If no images, show fallback cover image (simplified approach)
+    if (images.length === 0) {
+      // Debug logging in development
+      if (process.env.NODE_ENV === 'development') {
+        console.log('Post without images:', {
+          postId: post.id,
+          hasMessage: !!post.message,
+          messagePreview: post.message?.substring(0, 100),
+          hasAttachments: !!post.attachments?.data?.length,
+          attachments: post.attachments?.data?.map(att => ({
+            type: att.type,
+            hasUrl: !!att.target?.url,
+            mediaType: att.media_type
+          }))
+        });
+      }
+
+      // Show fallback image for ALL posts without images that have content
+      // (Only skip for completely empty posts)
+      if (post.message || post.attachments?.data?.length) {
+        return (
+          <div className="mb-4">
+            <div className="relative w-full bg-gray-100 rounded-lg overflow-hidden shadow-sm">
+              <Image
+                src="/fb_cover.jpg"
+                alt="DVB Peacock Film Festival"
+                width={800}
+                height={400}
+                className="w-full h-auto object-cover"
+                sizes="(max-width: 768px) calc(100vw - 32px), 640px"
+                style={{
+                  maxHeight: '300px',
+                  minHeight: '200px'
+                }}
+                onError={(e) => {
+                  console.error('Fallback image failed to load:', e);
+                }}
+                onLoad={() => {
+                  console.log('Fallback image loaded successfully');
+                }}
+              />
+              <div className="absolute inset-0 bg-gradient-to-t from-black/50 to-transparent"></div>
+              <div className="absolute bottom-4 left-4 text-white">
+                <div className="text-sm font-medium opacity-90">DVB Peacock Film Festival</div>
+              </div>
+            </div>
+          </div>
+        );
+      }
+      
+      return null;
+    }
 
     if (images.length === 1) {
       // Single image - responsive height based on image aspect ratio
       const image = images[0];
-      const aspectRatio = image.width && image.height ? image.width / image.height : 16/9;
       
       return (
         <div className="mb-4">
