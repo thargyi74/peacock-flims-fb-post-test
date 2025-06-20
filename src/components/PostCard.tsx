@@ -132,56 +132,44 @@ export default function PostCard({ post, priority = false }: PostCardProps) {
   };
 
   const renderImageGrid = (images: Array<{ src: string; width?: number; height?: number; key: string }>) => {
-    // If no images, show fallback cover image (simplified approach)
-    if (images.length === 0) {
-      // Debug logging in development
-      if (process.env.NODE_ENV === 'development') {
-        console.log('Post without images:', {
-          postId: post.id,
-          hasMessage: !!post.message,
-          messagePreview: post.message?.substring(0, 100),
-          hasAttachments: !!post.attachments?.data?.length,
-          attachments: post.attachments?.data?.map(att => ({
-            type: att.type,
-            hasUrl: !!att.target?.url,
-            mediaType: att.media_type
-          }))
-        });
-      }
-
-      // Show fallback image for ALL posts without images that have content
-      // (Only skip for completely empty posts)
-      if (post.message || post.attachments?.data?.length) {
-        return (
-          <div className="mb-4">
-            <div className="relative w-full bg-gray-100 rounded-lg overflow-hidden shadow-sm">
-              <Image
-                src="/fb_cover.jpg"
-                alt="DVB Peacock Film Festival"
-                width={800}
-                height={400}
-                className="w-full h-auto object-cover"
-                sizes="(max-width: 768px) calc(100vw - 32px), 640px"
-                style={{
-                  maxHeight: '300px',
-                  minHeight: '200px'
-                }}
-                onError={(e) => {
-                  console.error('Fallback image failed to load:', e);
-                }}
-                onLoad={() => {
-                  console.log('Fallback image loaded successfully');
-                }}
-              />
-              <div className="absolute inset-0 bg-gradient-to-t from-black/50 to-transparent"></div>
-              <div className="absolute bottom-4 left-4 text-white">
-                <div className="text-sm font-medium opacity-90">DVB Peacock Film Festival</div>
-              </div>
+    // Check if this is a link post that should use fallback image
+    const hasUrlInMessage = post.message && /(https?:\/\/[^\s]+)/i.test(post.message);
+    const isLinkPost = hasUrlInMessage || post.attachments?.data?.some(att => att.target?.url && att.type !== 'photo');
+    
+    // For link posts, show fallback image instead of Facebook's auto-generated preview
+    if (isLinkPost) {
+      return (
+        <div className="mb-4">
+          <div className="relative w-full bg-gray-100 rounded-lg overflow-hidden shadow-sm">
+            <Image
+              src="/fb_cover.jpg"
+              alt="DVB Peacock Film Festival"
+              width={800}
+              height={400}
+              className="w-full h-auto object-cover"
+              sizes="(max-width: 768px) calc(100vw - 32px), 640px"
+              style={{
+                maxHeight: '300px',
+                minHeight: '200px'
+              }}
+              onError={(e) => {
+                console.error('Fallback image failed to load:', e);
+              }}
+              onLoad={() => {
+                console.log('Fallback image loaded successfully for link post');
+              }}
+            />
+            <div className="absolute inset-0 bg-gradient-to-t from-black/50 to-transparent"></div>
+            <div className="absolute bottom-4 left-4 text-white">
+              <div className="text-sm font-medium opacity-90">DVB Peacock Film Festival</div>
             </div>
           </div>
-        );
-      }
-      
+        </div>
+      );
+    }
+
+    // For regular posts with no images, return null
+    if (images.length === 0) {
       return null;
     }
 
@@ -333,11 +321,16 @@ export default function PostCard({ post, priority = false }: PostCardProps) {
   const totalEngagement = getTotalEngagement();
   const isHighEngagement = totalEngagement > 50;
 
-  // Debug logging for development
-  if (process.env.NODE_ENV === 'development' && allImages.length > 1) {
-    console.log('Post with multiple images detected:', {
+  // Debug logging for development - check ALL posts
+  if (process.env.NODE_ENV === 'development') {
+    console.log('Post analysis:', {
       postId: post.id,
       imageCount: allImages.length,
+      hasMainPicture: !!post.main_picture,
+      hasFullPicture: !!post.full_picture,
+      hasAttachments: !!post.attachments?.data?.length,
+      attachmentTypes: post.attachments?.data?.map(att => att.type),
+      messagePreview: post.message?.substring(0, 100),
       images: allImages.map(img => ({
         key: img.key,
         src: img.src.substring(0, 100) + '...',
