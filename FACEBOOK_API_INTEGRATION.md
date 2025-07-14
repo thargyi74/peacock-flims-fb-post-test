@@ -142,16 +142,19 @@ curl -s 'http://localhost:3000/api/facebook/posts?limit=5'
 Facebook provides different types of tokens with varying lifespans:
 
 #### Short-lived User Access Tokens
+
 - **Lifespan**: 1-2 hours
 - **Use**: Initial authentication
 - **Source**: Facebook Login, Graph API Explorer
 
 #### Long-lived User Access Tokens
+
 - **Lifespan**: 60 days
 - **Use**: Extended application access
 - **Obtained**: By exchanging short-lived tokens
 
 #### Page Access Tokens
+
 - **Lifespan**: Inherits from User Access Token that created it
 - **Use**: Page management and content access
 - **Behavior**: If created from long-lived user token, it's also long-lived
@@ -209,6 +212,7 @@ curl -X GET "https://graph.facebook.com/v19.0/oauth/access_token?grant_type=fb_e
 #### Method 3: Facebook Business Manager
 
 For production applications:
+
 1. Go to Facebook Business Settings
 2. Navigate to System Users
 3. Create a system user with appropriate permissions
@@ -401,6 +405,7 @@ CREATE TABLE facebook_tokens (
 #### 1. Never Expire Tokens (Business Use Case)
 
 For business applications, use System User tokens:
+
 - Go to Facebook Business Manager
 - Create a System User
 - Assign necessary permissions
@@ -410,6 +415,7 @@ For business applications, use System User tokens:
 #### 2. Token Rotation Strategy
 
 Implement a rotation strategy:
+
 - Refresh tokens every 30-45 days
 - Keep backup tokens in case of failure
 - Monitor token health regularly
