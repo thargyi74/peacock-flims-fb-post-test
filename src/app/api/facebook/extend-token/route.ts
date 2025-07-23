@@ -61,7 +61,7 @@ export async function POST(request: NextRequest) {
     let targetPageToken = null;
 
     if (pageId && pageTokenData.data) {
-      const targetPage = pageTokenData.data.find((page: any) => page.id === pageId);
+      const targetPage = pageTokenData.data.find((page: { id: string; access_token: string }) => page.id === pageId);
       if (targetPage) {
         targetPageToken = targetPage.access_token;
       }

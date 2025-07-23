@@ -182,7 +182,7 @@ export async function GET(request: NextRequest) {
             console.log(`✅ ${endpoint} succeeded! Found ${data.data?.length || 0} posts`);
             break;
           }
-        } catch (error) {
+        } catch (fetchError) {
           lastError = { message: 'Network error', code: 'NETWORK_ERROR' };
           continue;
         }

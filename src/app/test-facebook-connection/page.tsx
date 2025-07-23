@@ -246,7 +246,7 @@ export default function TestConnectionPage() {
                           <div className="mt-2">
                             <p><strong>Recent Posts:</strong></p>
                             <ul className="mt-1 space-y-1">
-                              {results.results.postsCheck.posts.map((post: any, index: number) => (
+                              {results.results.postsCheck.posts.map((post: Post, index: number) => (
                                 <li key={post.id} className="text-xs">
                                   {index + 1}. {post.message || post.story || 'No text content'}
                                 </li>

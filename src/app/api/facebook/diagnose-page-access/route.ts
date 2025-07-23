@@ -1,5 +1,12 @@
 import { NextRequest, NextResponse } from 'next/server';
 
+interface CheckResult {
+  success: boolean;
+  data?: unknown;
+  error?: unknown;
+  pageFound?: boolean;
+}
+
 export async function GET(request: NextRequest) {
   try {
     const { searchParams } = new URL(request.url);
@@ -15,7 +22,7 @@ export async function GET(request: NextRequest) {
 
     const results = {
       pageId,
-      checks: {} as Record<string, any>,
+      checks: {} as Record<string, CheckResult>,
       recommendations: [] as string[]
     };
 
@@ -32,7 +39,7 @@ export async function GET(request: NextRequest) {
         data: pageData.error ? null : pageData,
         error: pageData.error || null
       };
-    } catch (error) {
+    } catch (fetchError) {
       results.checks.directPageAccess = {
         success: false,
         error: 'Network error'
@@ -52,7 +59,7 @@ export async function GET(request: NextRequest) {
         data: rolesData.error ? null : rolesData,
         error: rolesData.error || null
       };
-    } catch (error) {
+    } catch (fetchError) {
       results.checks.pageRoles = {
         success: false,
         error: 'Network error'
@@ -72,7 +79,7 @@ export async function GET(request: NextRequest) {
         data: insightsData.error ? null : insightsData,
         error: insightsData.error || null
       };
-    } catch (error) {
+    } catch (fetchError) {
       results.checks.pageInsights = {
         success: false,
         error: 'Network error'
@@ -91,9 +98,9 @@ export async function GET(request: NextRequest) {
         success: !accountsData.error,
         data: accountsData.error ? null : accountsData,
         error: accountsData.error || null,
-        pageFound: !accountsData.error && accountsData.data?.some((page: any) => page.id === pageId)
+        pageFound: !accountsData.error && accountsData.data?.some((page: { id: string }) => page.id === pageId)
       };
-    } catch (error) {
+    } catch (fetchError) {
       results.checks.listedPages = {
         success: false,
         error: 'Network error'
@@ -113,7 +120,7 @@ export async function GET(request: NextRequest) {
         data: userData.error ? null : userData,
         error: userData.error || null
       };
-    } catch (error) {
+    } catch (fetchError) {
       results.checks.userInfo = {
         success: false,
         error: 'Network error'
@@ -128,14 +135,14 @@ export async function GET(request: NextRequest) {
       );
       const permissionsData = await permissionsResponse.json();
       
-      const grantedPermissions = permissionsData.data?.filter((perm: any) => perm.status === 'granted').map((perm: any) => perm.permission) || [];
+      const grantedPermissions = permissionsData.data?.filter((perm: { status: string }) => perm.status === 'granted').map((perm: { permission: string }) => perm.permission) || [];
       
       results.checks.permissions = {
         success: !permissionsData.error,
         data: permissionsData.error ? null : { granted: grantedPermissions, all: permissionsData.data },
         error: permissionsData.error || null
       };
-    } catch (error) {
+    } catch (fetchError) {
       results.checks.permissions = {
         success: false,
         error: 'Network error'
@@ -160,7 +167,7 @@ export async function GET(request: NextRequest) {
     }
 
     const requiredPermissions = ['pages_show_list', 'pages_read_engagement', 'pages_manage_posts'];
-    const grantedPermissions = results.checks.permissions?.data?.granted || [];
+    const grantedPermissions = (results.checks.permissions?.data as { granted: string[] })?.granted || [];
     const missingPermissions = requiredPermissions.filter(perm => !grantedPermissions.includes(perm));
     
     if (missingPermissions.length > 0) {

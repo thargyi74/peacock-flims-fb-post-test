@@ -89,7 +89,7 @@ export default function PostCard({ post, priority = false }: PostCardProps) {
 
     return Array.from(imageGroups.values())
       .sort((a, b) => b.quality - a.quality)
-      .map(({ quality, ...image }) => image);
+      .map(({ quality: _, ...image }) => image);
   }, [post]);
 
   const allImages = getAllImages();
