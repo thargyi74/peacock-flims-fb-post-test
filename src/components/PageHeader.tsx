@@ -50,7 +50,7 @@ export default function PageHeader({ pageInfo, loading }: PageHeaderProps) {
                 console.log('Cover photo loaded successfully:', pageInfo.cover?.source);
               }}
             />
-            <div className="absolute inset-0 bg-black bg-opacity-20" />
+            {/* <div className="absolute inset-0 bg-black bg-opacity-20" /> */}
           </>
         ) : (
           // Fallback - try local cover photo first, then gradient
@@ -97,13 +97,13 @@ export default function PageHeader({ pageInfo, loading }: PageHeaderProps) {
           {/* Page Info */}
           <div className="flex-1 min-w-0">
             <div className="flex items-center gap-2 mb-2">
-              <h1 className="text-xl sm:text-2xl font-bold text-gray-900 truncate">
+              <h1 className="text-xl sm:text-3xl font-bold text-white truncate mb-4 px-3 py-2 bg-black bg-opacity-50 rounded-lg shadow-lg" style={{ textShadow: '2px 2px 4px rgba(0,0,0,0.8)' }}>
                 {pageInfo.name}
               </h1>
               <CheckCircle className="w-5 h-5 text-blue-500 flex-shrink-0" aria-label="Verified page" />
             </div>
             
-            <div className="flex flex-wrap items-center gap-4 text-sm text-gray-600">
+            {/* <div className="flex flex-wrap items-center gap-4 text-sm text-gray-600">
               {pageInfo.fan_count !== undefined && (
                 <div className="flex items-center gap-1">
                   <Users className="w-4 h-4" />
@@ -122,7 +122,7 @@ export default function PageHeader({ pageInfo, loading }: PageHeaderProps) {
                 <Calendar className="w-4 h-4" />
                 <span>Entertainment</span>
               </div>
-            </div>
+            </div> */}
 
             {/* Page Description */}
             <div className="mt-3 p-3 bg-gray-50 rounded-lg border-l-4 border-blue-200">

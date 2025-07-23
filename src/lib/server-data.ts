@@ -10,7 +10,7 @@ export async function getInitialFacebookData(): Promise<FacebookInitialDataRespo
     // Fetch page info and posts concurrently using the cached service methods
     const [pageInfo, postsResponse] = await Promise.all([
       facebookService.getPageInfo(),
-      facebookService.getPosts(10), // Initial limit
+      facebookService.getPosts(20), // Initial limit
     ]);
 
     return {
