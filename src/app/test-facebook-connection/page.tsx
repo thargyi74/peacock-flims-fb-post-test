@@ -16,10 +16,26 @@ interface TestResults {
     recommendations: string[];
   };
   results: {
-    tokenCheck: any;
-    adminCheck: any;
-    pageInfo: any;
-    postsCheck: any;
+    tokenCheck: {
+      success: boolean;
+      error: string;
+      data: unknown;
+    };
+    adminCheck: {
+      success: boolean;
+      error: string;
+      data: unknown;
+    };
+    pageInfo: {
+      success: boolean;
+      error: string;
+      data: unknown;
+    };
+    postsCheck: {
+      success: boolean;
+      error: string;
+      data: unknown;
+    };
     errors: string[];
   };
   timestamp: string;

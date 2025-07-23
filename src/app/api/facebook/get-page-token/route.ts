@@ -38,7 +38,8 @@ export async function GET(request: NextRequest) {
           explanation: 'You may not have admin access to this page through your current app'
         });
       }
-    } catch (fetchError) {
+    } catch (fetchError: unknown) {
+      console.error('Direct page token error:', fetchError);
       solutions.push({
         method: 'Direct Page Token',
         success: false,
@@ -60,7 +61,8 @@ export async function GET(request: NextRequest) {
         data: pageInfoData.error ? null : pageInfoData,
         error: pageInfoData.error || null
       });
-    } catch (fetchError) {
+    } catch (fetchError: unknown) {
+      console.error('Page existence check error:', fetchError);
       solutions.push({
         method: 'Page Existence Check',
         success: false,
@@ -84,7 +86,8 @@ export async function GET(request: NextRequest) {
         grantedPermissions,
         error: permissionsData.error || null
       });
-    } catch (fetchError) {
+    } catch (fetchError: unknown) {
+      console.error('User permissions error:', fetchError);
       solutions.push({
         method: 'User Permissions',
         success: false,

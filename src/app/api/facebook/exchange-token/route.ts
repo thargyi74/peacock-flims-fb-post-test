@@ -37,10 +37,10 @@ export async function POST(request: NextRequest) {
     } else {
       throw new Error(data.error?.message || 'Failed to exchange token');
     }
-  } catch (error) {
+  } catch (error: unknown) {
     console.error('Token exchange error:', error);
     return NextResponse.json(
-      { success: false, error: error.message },
+      { success: false, error: error instanceof Error ? error.message : 'Unknown error' },
       { status: 500 }
     );
   }

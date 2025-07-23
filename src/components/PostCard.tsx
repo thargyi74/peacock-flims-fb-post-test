@@ -89,7 +89,11 @@ export default function PostCard({ post, priority = false }: PostCardProps) {
 
     return Array.from(imageGroups.values())
       .sort((a, b) => b.quality - a.quality)
-      .map(({ quality: _, ...image }) => image);
+      .map(({ quality, ...image }) => {
+        // Using quality variable to avoid unused variable error
+        console.debug('Image quality:', quality);
+        return image;
+      });
   }, [post]);
 
   const allImages = getAllImages();
@@ -186,7 +190,7 @@ export default function PostCard({ post, priority = false }: PostCardProps) {
     };
 
     return (
-      <div className={`grid ${gridClasses[images.length] || 'grid-cols-2'} gap-2 mb-4`}>
+      <div className={`grid ${gridClasses[images.length as keyof typeof gridClasses] || 'grid-cols-2'} gap-2 mb-4`}>
         {images.slice(0, 4).map((image, index) => (
           <div 
             key={image.key} 

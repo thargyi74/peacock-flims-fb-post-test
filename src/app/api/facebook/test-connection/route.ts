@@ -1,4 +1,4 @@
-import { NextRequest, NextResponse } from 'next/server';
+import { NextResponse } from 'next/server';
 
 interface FacebookPage {
   id: string;
@@ -35,230 +35,204 @@ interface FacebookPost {
   };
 }
 
-export async function GET(request: NextRequest) {
+export async function GET() {
   try {
-    const { searchParams } = new URL(request.url);
-    const testPageId = searchParams.get('page_id') || process.env.FACEBOOK_PAGE_ID;
-    const accessToken = searchParams.get('access_token') || process.env.FACEBOOK_ACCESS_TOKEN;
-    
+    const accessToken = process.env.FACEBOOK_ACCESS_TOKEN;
+    const pageId = process.env.FACEBOOK_PAGE_ID;
+
     if (!accessToken) {
       return NextResponse.json(
-        { error: 'Missing access token. Set FACEBOOK_ACCESS_TOKEN in .env or pass as parameter.' },
-        { status: 400 }
+        { error: 'Facebook access token not configured' },
+        { status: 500 }
+      );
+    }
+
+    if (!pageId) {
+      return NextResponse.json(
+        { error: 'Facebook page ID not configured' },
+        { status: 500 }
       );
     }
 
     const results = {
-      tokenCheck: null as any,
-      adminCheck: null as any,
-      pageInfo: null as any,
-      postsCheck: null as any,
+      tokenCheck: { success: false, error: '', data: null },
+      adminCheck: { success: false, error: '', data: null },
+      pageInfo: { success: false, error: '', data: null },
+      postsCheck: { success: false, error: '', data: null },
       errors: [] as string[]
     };
 
     // Step 1: Check token validity
     console.log('🔍 Step 1: Checking token validity...');
     try {
-      const tokenResponse = await fetch(`https://graph.facebook.com/v19.0/me?access_token=${accessToken}`);
+      const tokenResponse = await fetch(
+        `https://graph.facebook.com/me?access_token=${accessToken}&fields=id,name`
+      );
       const tokenData = await tokenResponse.json();
-      
+
       if (tokenData.error) {
+        results.tokenCheck = { success: false, error: tokenData.error.message, data: null };
         results.errors.push(`Token validation failed: ${tokenData.error.message}`);
-        results.tokenCheck = { valid: false, error: tokenData.error };
       } else {
         results.tokenCheck = {
-          valid: true,
-          user: {
-            name: tokenData.name,
-            id: tokenData.id
+          success: true,
+          error: '',
+          data: {
+            id: tokenData.id,
+            name: tokenData.name
           }
         };
-        console.log(`✅ Token valid for user: ${tokenData.name} (${tokenData.id})`);
       }
-    } catch (error) {
-      results.errors.push('Failed to validate token');
-      results.tokenCheck = { valid: false, error: 'Network error' };
+    } catch (error: unknown) {
+      console.error('Token check error:', error);
+      results.tokenCheck = { success: false, error: 'Network error', data: null };
+      results.errors.push('Token validation network error');
     }
 
-    // Step 2: Check admin access and get administered pages
+    // Step 2: Check admin access
     console.log('🔍 Step 2: Checking admin access...');
     try {
-      const pagesResponse = await fetch(`https://graph.facebook.com/v19.0/me/accounts?access_token=${accessToken}`);
+      const pagesResponse = await fetch(
+        `https://graph.facebook.com/me/accounts?access_token=${accessToken}&fields=id,name,access_token`
+      );
       const pagesData = await pagesResponse.json();
-      
+
       if (pagesData.error) {
+        results.adminCheck = { success: false, error: pagesData.error.message, data: null };
         results.errors.push(`Admin check failed: ${pagesData.error.message}`);
-        results.adminCheck = { hasAccess: false, error: pagesData.error };
       } else {
         const administeredPages = pagesData.data || [];
-        const targetPage = administeredPages.find((page: FacebookPage) => page.id === testPageId);
+        const targetPage = administeredPages.find((page: any) => page.id === pageId);
         
         results.adminCheck = {
-          hasAccess: true,
-          totalPages: administeredPages.length,
-          administeredPages: administeredPages.map((page: FacebookPage) => ({
-            id: page.id,
-            name: page.name,
-            category: page.category,
-            tasks: page.tasks
-          })),
-          isAdminOfTargetPage: !!targetPage,
-          targetPageInfo: targetPage || null
+          success: true,
+          error: '',
+          data: {
+            hasAccess: administeredPages.length > 0,
+            isAdminOfTargetPage: !!targetPage,
+            totalPages: administeredPages.length,
+            pages: administeredPages.map((page: any) => ({
+              id: page.id,
+              name: page.name
+            }))
+          }
         };
-        
-        console.log(`✅ Found ${administeredPages.length} administered pages`);
-        if (targetPage) {
-          console.log(`✅ User is admin of target page: ${targetPage.name}`);
-        } else {
-          console.log(`⚠️ User is NOT admin of page ${testPageId}`);
-        }
       }
-    } catch (error) {
-      results.errors.push('Failed to check admin access');
-      results.adminCheck = { hasAccess: false, error: 'Network error' };
+    } catch (error: unknown) {
+      console.error('Admin check error:', error);
+      results.adminCheck = { success: false, error: 'Network error', data: null };
+      results.errors.push('Admin access check network error');
     }
 
-    // Step 3: Get page information
-    console.log('🔍 Step 3: Getting page information...');
-    if (testPageId) {
-      try {
-        const pageResponse = await fetch(
-          `https://graph.facebook.com/v19.0/${testPageId}?fields=id,name,about,category,picture,cover,fan_count&access_token=${accessToken}`
-        );
-        const pageData = await pageResponse.json();
-        
-        if (pageData.error) {
-          results.errors.push(`Page info failed: ${pageData.error.message}`);
-          results.pageInfo = { accessible: false, error: pageData.error };
-        } else {
-          results.pageInfo = {
-            accessible: true,
-            page: {
-              id: pageData.id,
-              name: pageData.name,
-              about: pageData.about,
-              category: pageData.category,
-              fanCount: pageData.fan_count,
-              picture: pageData.picture?.data?.url,
-              cover: pageData.cover?.source
+    // Step 3: Check page info access
+    console.log('🔍 Step 3: Checking page info access...');
+    try {
+      const pageResponse = await fetch(
+        `https://graph.facebook.com/${pageId}?access_token=${accessToken}&fields=id,name,fan_count,about,category`
+      );
+      const pageData = await pageResponse.json();
+
+      if (pageData.error) {
+        results.pageInfo = { success: false, error: pageData.error.message, data: null };
+        results.errors.push(`Page info access failed: ${pageData.error.message}`);
+      } else {
+        results.pageInfo = {
+          success: true,
+          error: '',
+          data: {
+            id: pageData.id,
+            name: pageData.name,
+            fan_count: pageData.fan_count,
+            about: pageData.about,
+            category: pageData.category
+          }
+        };
+      }
+    } catch (error: unknown) {
+      console.error('Page info error:', error);
+      results.pageInfo = { success: false, error: 'Network error', data: null };
+      results.errors.push('Page info access network error');
+    }
+
+    // Step 4: Check posts access
+    console.log('🔍 Step 4: Checking posts access...');
+    try {
+      const postsResponse = await fetch(
+        `https://graph.facebook.com/${pageId}/posts?access_token=${accessToken}&fields=id,message,created_time,permalink_url&limit=5`
+      );
+      const postsData = await postsResponse.json();
+
+      if (postsData.error) {
+        results.postsCheck = { success: false, error: postsData.error.message, data: null };
+        results.errors.push(`Posts access failed: ${postsData.error.message}`);
+      } else {
+        try {
+          const posts = postsData.data || [];
+          results.postsCheck = {
+            success: true,
+            error: '',
+            data: {
+              accessible: true,
+              totalPosts: posts.length,
+              samplePosts: posts.slice(0, 3).map((post: any) => ({
+                id: post.id,
+                message: post.message ? post.message.substring(0, 100) + (post.message.length > 100 ? '...' : '') : 'No message',
+                created_time: post.created_time,
+                permalink_url: post.permalink_url
+              }))
             }
           };
-          console.log(`✅ Page info retrieved: ${pageData.name}`);
-        }
-      } catch (error) {
-        results.errors.push('Failed to get page information');
-        results.pageInfo = { accessible: false, error: 'Network error' };
-      }
-    }
-
-    // Step 4: Try to fetch posts
-    console.log('🔍 Step 4: Attempting to fetch posts...');
-    if (testPageId) {
-      const postEndpoints = [
-        `/posts?fields=id,message,story,created_time,full_picture,permalink_url,attachments{type,media,target,title,description}`,
-        `/feed?fields=id,message,story,created_time,full_picture,permalink_url`,
-        `/published_posts?fields=id,message,created_time,permalink_url`
-      ];
-
-      let postsSuccess = false;
-      let postsData = null;
-      let lastError = null;
-
-      for (const endpoint of postEndpoints) {
-        try {
-          console.log(`Trying endpoint: ${endpoint}`);
-          const postsResponse = await fetch(
-            `https://graph.facebook.com/v19.0/${testPageId}${endpoint}&limit=5&access_token=${accessToken}`
-          );
-          const data = await postsResponse.json();
-          
-          if (data.error) {
-            lastError = data.error;
-            console.log(`❌ ${endpoint} failed: ${data.error.message}`);
-            continue;
-          } else {
-            postsSuccess = true;
-            postsData = data;
-            console.log(`✅ ${endpoint} succeeded! Found ${data.data?.length || 0} posts`);
-            break;
-          }
-        } catch (fetchError) {
-          lastError = { message: 'Network error', code: 'NETWORK_ERROR' };
-          continue;
+        } catch (processError: unknown) {
+          console.error('Posts processing error:', processError);
+          results.postsCheck = {
+            success: false,
+            error: 'Error processing posts data',
+            data: null
+          };
         }
       }
-
-      if (postsSuccess && postsData) {
-        results.postsCheck = {
-          accessible: true,
-          totalPosts: postsData.data?.length || 0,
-          posts: postsData.data?.slice(0, 3).map((post: FacebookPost) => ({
-            id: post.id,
-            message: post.message?.substring(0, 100) + (post.message?.length > 100 ? '...' : ''),
-            story: post.story,
-            createdTime: post.created_time,
-            hasImage: !!post.full_picture,
-            permalinkUrl: post.permalink_url,
-            attachmentsCount: post.attachments?.data?.length || 0
-          })) || [],
-          paging: postsData.paging
-        };
-      } else {
-        results.postsCheck = {
-          accessible: false,
-          error: lastError,
-          recommendations: [
-            'Ensure you have a Page Access Token (not User Access Token)',
-            'Check that your app has pages_read_engagement permission',
-            'Verify you are an admin/editor of the target page',
-            'Make sure the page has published posts'
-          ]
-        };
-        results.errors.push(`Posts fetch failed: ${lastError?.message || 'Unknown error'}`);
-      }
+    } catch (error: unknown) {
+      console.error('Posts check error:', error);
+      results.postsCheck = { success: false, error: 'Network error', data: null };
+      results.errors.push('Posts access network error');
     }
 
-    // Summary
+    // Generate summary
     const summary = {
-      overallStatus: results.errors.length === 0 ? 'SUCCESS' : 'PARTIAL_SUCCESS',
-      checksCompleted: {
-        tokenValid: results.tokenCheck?.valid || false,
-        hasAdminAccess: results.adminCheck?.hasAccess || false,
-        isAdminOfTargetPage: results.adminCheck?.isAdminOfTargetPage || false,
-        pageAccessible: results.pageInfo?.accessible || false,
-        postsAccessible: results.postsCheck?.accessible || false
-      },
-      recommendations: []
+      overall: results.errors.length === 0,
+      tokenValid: results.tokenCheck.success,
+      hasAdminAccess: results.adminCheck.success && results.adminCheck.data?.hasAccess,
+      isAdminOfTargetPage: results.adminCheck.success && results.adminCheck.data?.isAdminOfTargetPage,
+      canAccessPageInfo: results.pageInfo.success,
+      canAccessPosts: results.postsCheck.success,
+      totalErrors: results.errors.length,
+      recommendations: [] as string[]
     };
 
-    // Add recommendations based on results
-    if (!summary.checksCompleted.tokenValid) {
+    if (!summary.tokenValid) {
       summary.recommendations.push('Generate a new access token from Facebook Graph API Explorer');
     }
-    if (!summary.checksCompleted.hasAdminAccess) {
+    if (!summary.hasAdminAccess) {
       summary.recommendations.push('Ensure you have proper permissions: pages_show_list, pages_read_engagement');
     }
-    if (!summary.checksCompleted.isAdminOfTargetPage) {
-      summary.recommendations.push('Make sure you are an admin/editor of the target Facebook page');
+    if (!summary.isAdminOfTargetPage) {
+      summary.recommendations.push('Make sure you are an admin of the target page');
     }
-    if (!summary.checksCompleted.postsAccessible) {
-      summary.recommendations.push('Use a Page Access Token instead of User Access Token for reading posts');
+    if (!summary.canAccessPosts) {
+      summary.recommendations.push('Request pages_read_user_content permission for post access');
     }
 
     return NextResponse.json({
-      success: true,
+      success: summary.overall,
       summary,
-      results,
+      details: results,
       timestamp: new Date().toISOString()
     });
 
   } catch (error) {
-    console.error('Test connection error:', error);
+    console.error('Connection test error:', error);
     return NextResponse.json(
-      { 
-        error: 'Failed to test Facebook connection',
-        details: error instanceof Error ? error.message : 'Unknown error'
-      },
+      { error: 'Internal server error during connection test' },
       { status: 500 }
     );
   }

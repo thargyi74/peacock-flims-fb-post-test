@@ -39,7 +39,8 @@ export async function GET(request: NextRequest) {
         data: pageData.error ? null : pageData,
         error: pageData.error || null
       };
-    } catch (fetchError) {
+    } catch (fetchError: unknown) {
+      console.error('Direct page access error:', fetchError);
       results.checks.directPageAccess = {
         success: false,
         error: 'Network error'
@@ -59,7 +60,8 @@ export async function GET(request: NextRequest) {
         data: rolesData.error ? null : rolesData,
         error: rolesData.error || null
       };
-    } catch (fetchError) {
+    } catch (fetchError: unknown) {
+      console.error('Page roles error:', fetchError);
       results.checks.pageRoles = {
         success: false,
         error: 'Network error'
@@ -79,7 +81,8 @@ export async function GET(request: NextRequest) {
         data: insightsData.error ? null : insightsData,
         error: insightsData.error || null
       };
-    } catch (fetchError) {
+    } catch (fetchError: unknown) {
+      console.error('Page insights error:', fetchError);
       results.checks.pageInsights = {
         success: false,
         error: 'Network error'
@@ -100,7 +103,8 @@ export async function GET(request: NextRequest) {
         error: accountsData.error || null,
         pageFound: !accountsData.error && accountsData.data?.some((page: { id: string }) => page.id === pageId)
       };
-    } catch (fetchError) {
+    } catch (fetchError: unknown) {
+      console.error('Listed pages error:', fetchError);
       results.checks.listedPages = {
         success: false,
         error: 'Network error'
@@ -120,7 +124,8 @@ export async function GET(request: NextRequest) {
         data: userData.error ? null : userData,
         error: userData.error || null
       };
-    } catch (fetchError) {
+    } catch (fetchError: unknown) {
+      console.error('User info error:', fetchError);
       results.checks.userInfo = {
         success: false,
         error: 'Network error'
@@ -142,7 +147,8 @@ export async function GET(request: NextRequest) {
         data: permissionsData.error ? null : { granted: grantedPermissions, all: permissionsData.data },
         error: permissionsData.error || null
       };
-    } catch (fetchError) {
+    } catch (fetchError: unknown) {
+      console.error('Permissions error:', fetchError);
       results.checks.permissions = {
         success: false,
         error: 'Network error'
