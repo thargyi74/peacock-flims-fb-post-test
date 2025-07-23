@@ -6,7 +6,7 @@ export const revalidate = 300;
 
 export async function GET(request: NextRequest) {
   try {
-    const { searchParams } = new URL(request.url);
+    const searchParams = request.nextUrl.searchParams;
     const limit = parseInt(searchParams.get('limit') || '10');
     const after = searchParams.get('after') || undefined;
 

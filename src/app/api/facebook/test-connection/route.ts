@@ -55,10 +55,10 @@ export async function GET() {
     }
 
     const results = {
-      tokenCheck: { success: false, error: '', data: null },
-      adminCheck: { success: false, error: '', data: null },
-      pageInfo: { success: false, error: '', data: null },
-      postsCheck: { success: false, error: '', data: null },
+      tokenCheck: { success: false, error: '', data: null as any },
+      adminCheck: { success: false, error: '', data: null as any },
+      pageInfo: { success: false, error: '', data: null as any },
+      postsCheck: { success: false, error: '', data: null as any },
       errors: [] as string[]
     };
 

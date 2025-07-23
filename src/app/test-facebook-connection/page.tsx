@@ -76,10 +76,10 @@ export default function TestConnectionPage() {
           recommendations: ['Check your network connection and try again']
         },
         results: {
-          tokenCheck: null,
-          adminCheck: null,
-          pageInfo: null,
-          postsCheck: null,
+          tokenCheck: { success: false, error: 'Network error', data: null },
+          adminCheck: { success: false, error: 'Network error', data: null },
+          pageInfo: { success: false, error: 'Network error', data: null },
+          postsCheck: { success: false, error: 'Network error', data: null },
           errors: ['Network error occurred']
         },
         timestamp: new Date().toISOString()
@@ -192,16 +192,16 @@ export default function TestConnectionPage() {
                 {results.results.tokenCheck && (
                   <div className="bg-white border border-gray-200 rounded-md p-4">
                     <h4 className="font-medium text-gray-800 mb-2">
-                      {getStatusIcon(results.results.tokenCheck.valid)} Token Validation
+                      {getStatusIcon(results.results.tokenCheck.success)} Token Validation
                     </h4>
-                    {results.results.tokenCheck.valid ? (
+                    {results.results.tokenCheck.success ? (
                       <div className="text-sm text-gray-600">
-                        <p><strong>User:</strong> {results.results.tokenCheck.user.name}</p>
-                        <p><strong>ID:</strong> {results.results.tokenCheck.user.id}</p>
+                        <p><strong>User:</strong> {(results.results.tokenCheck.data as any)?.name || 'N/A'}</p>
+                        <p><strong>ID:</strong> {(results.results.tokenCheck.data as any)?.id || 'N/A'}</p>
                       </div>
                     ) : (
                       <div className="text-sm text-red-600">
-                        Error: {results.results.tokenCheck.error?.message || 'Token validation failed'}
+                        Error: {results.results.tokenCheck.error || 'Token validation failed'}
                       </div>
                     )}
                   </div>
@@ -211,19 +211,19 @@ export default function TestConnectionPage() {
                 {results.results.adminCheck && (
                   <div className="bg-white border border-gray-200 rounded-md p-4">
                     <h4 className="font-medium text-gray-800 mb-2">
-                      {getStatusIcon(results.results.adminCheck.hasAccess)} Admin Access
+                      {getStatusIcon(results.results.adminCheck.success)} Admin Access
                     </h4>
-                    {results.results.adminCheck.hasAccess ? (
+                    {results.results.adminCheck.success ? (
                       <div className="text-sm text-gray-600">
-                        <p><strong>Total Pages:</strong> {results.results.adminCheck.totalPages}</p>
-                        <p><strong>Admin of Target:</strong> {getStatusIcon(results.results.adminCheck.isAdminOfTargetPage)}</p>
-                        {results.results.adminCheck.targetPageInfo && (
-                          <p><strong>Page:</strong> {results.results.adminCheck.targetPageInfo.name}</p>
+                        <p><strong>Total Pages:</strong> {(results.results.adminCheck.data as any)?.totalPages || 0}</p>
+                        <p><strong>Admin of Target:</strong> {getStatusIcon((results.results.adminCheck.data as any)?.isAdminOfTargetPage)}</p>
+                        {(results.results.adminCheck.data as any)?.targetPageInfo && (
+                          <p><strong>Page:</strong> {(results.results.adminCheck.data as any)?.targetPageInfo.name}</p>
                         )}
                       </div>
                     ) : (
                       <div className="text-sm text-red-600">
-                        Error: {results.results.adminCheck.error?.message || 'Admin access failed'}
+                        Error: {results.results.adminCheck.error || 'Admin access failed'}
                       </div>
                     )}
                   </div>
@@ -233,17 +233,17 @@ export default function TestConnectionPage() {
                 {results.results.pageInfo && (
                   <div className="bg-white border border-gray-200 rounded-md p-4">
                     <h4 className="font-medium text-gray-800 mb-2">
-                      {getStatusIcon(results.results.pageInfo.accessible)} Page Information
+                      {getStatusIcon(results.results.pageInfo.success)} Page Information
                     </h4>
-                    {results.results.pageInfo.accessible ? (
+                    {results.results.pageInfo.success ? (
                       <div className="text-sm text-gray-600">
-                        <p><strong>Name:</strong> {results.results.pageInfo.page.name}</p>
-                        <p><strong>Category:</strong> {results.results.pageInfo.page.category}</p>
-                        <p><strong>Fans:</strong> {results.results.pageInfo.page.fanCount || 'N/A'}</p>
+                        <p><strong>Name:</strong> {(results.results.pageInfo.data as any)?.name || 'N/A'}</p>
+                        <p><strong>Category:</strong> {(results.results.pageInfo.data as any)?.category || 'N/A'}</p>
+                        <p><strong>Fans:</strong> {(results.results.pageInfo.data as any)?.fan_count || 'N/A'}</p>
                       </div>
                     ) : (
                       <div className="text-sm text-red-600">
-                        Error: {results.results.pageInfo.error?.message || 'Page access failed'}
+                        Error: {results.results.pageInfo.error || 'Page access failed'}
                       </div>
                     )}
                   </div>
@@ -253,18 +253,18 @@ export default function TestConnectionPage() {
                 {results.results.postsCheck && (
                   <div className="bg-white border border-gray-200 rounded-md p-4">
                     <h4 className="font-medium text-gray-800 mb-2">
-                      {getStatusIcon(results.results.postsCheck.accessible)} Posts Access
+                      {getStatusIcon(results.results.postsCheck.success)} Posts Access
                     </h4>
-                    {results.results.postsCheck.accessible ? (
+                    {results.results.postsCheck.success ? (
                       <div className="text-sm text-gray-600">
-                        <p><strong>Posts Found:</strong> {results.results.postsCheck.totalPosts}</p>
-                        {results.results.postsCheck.posts.length > 0 && (
+                        <p><strong>Posts Found:</strong> {(results.results.postsCheck.data as any)?.totalPosts || 0}</p>
+                        {(results.results.postsCheck.data as any)?.samplePosts?.length > 0 && (
                           <div className="mt-2">
                             <p><strong>Recent Posts:</strong></p>
                             <ul className="mt-1 space-y-1">
-                              {results.results.postsCheck.posts.map((post: Post, index: number) => (
+                              {(results.results.postsCheck.data as any).samplePosts.map((post: any, index: number) => (
                                 <li key={post.id} className="text-xs">
-                                  {index + 1}. {post.message || post.story || 'No text content'}
+                                  {index + 1}. {post.message || 'No text content'}
                                 </li>
                               ))}
                             </ul>
@@ -273,7 +273,7 @@ export default function TestConnectionPage() {
                       </div>
                     ) : (
                       <div className="text-sm text-red-600">
-                        Error: {results.results.postsCheck.error?.message || 'Posts access failed'}
+                        Error: {results.results.postsCheck.error || 'Posts access failed'}
                       </div>
                     )}
                   </div>
