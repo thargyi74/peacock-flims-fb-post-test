@@ -4,6 +4,9 @@ import { facebookService } from '@/lib/facebook-service';
 // Cache for 5 minutes - posts are dynamic content that changes frequently
 export const revalidate = 300;
 
+// Force dynamic rendering since we use search params
+export const dynamic = 'force-dynamic';
+
 export async function GET(request: NextRequest) {
   try {
     const searchParams = request.nextUrl.searchParams;

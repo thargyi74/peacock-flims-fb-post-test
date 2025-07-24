@@ -67,7 +67,7 @@ async function FacebookFeed() {
         <div className="flex items-center justify-between mb-8">
           <div>
             <h1 className="text-3xl sm:text-4xl font-bold bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent">
-              Update Posts
+              News
             </h1>
             <p className="text-gray-600 mt-2">Latest updates and content</p>
           </div>
